@@ -27,6 +27,11 @@ export interface CpfpInfo {
   effectiveFeePerVsize?: number;
 }
 
+export interface RbfInfo {
+  tx: RbfTransaction,
+  time: number
+}
+
 export interface DifficultyAdjustment {
   progressPercent: number;
   difficultyChange: number;
@@ -144,6 +149,10 @@ export interface TransactionStripped {
   vsize: number;
   value: number;
   status?: 'found' | 'missing' | 'fresh' | 'added' | 'censored' | 'selected';
+}
+
+interface RbfTransaction extends TransactionStripped {
+  rbf?: boolean;
 }
 
 export interface RewardStats {
