@@ -29,7 +29,8 @@ export interface CpfpInfo {
 
 export interface RbfInfo {
   tx: RbfTransaction,
-  time: number
+  time: number,
+  mined?: boolean,
 }
 
 export interface DifficultyAdjustment {
