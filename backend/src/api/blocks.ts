@@ -677,7 +677,12 @@ class Blocks {
   }
 
   public async $getBlocks(fromHeight?: number, limit: number = 15): Promise<BlockExtended[]> {
-    let currentHeight = fromHeight !== undefined ? fromHeight : await blocksRepository.$mostRecentBlockHeight();
+    const tip = await blocksRepository.$mostRecentBlockHeight();
+    let currentHeight = fromHeight !== undefined ? fromHeight : tip;
+    if (currentHeight > tip) {
+      limit -= currentHeight - tip;
+      currentHeight = tip;
+    }
     const returnBlocks: BlockExtended[] = [];
 
     if (currentHeight < 0) {
