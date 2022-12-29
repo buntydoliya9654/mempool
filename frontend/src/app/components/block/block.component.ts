@@ -58,8 +58,9 @@ export class BlockComponent implements OnInit, OnDestroy {
   overviewError: any = null;
   webGlEnabled = true;
   indexingAvailable = false;
-  auditEnabled = true;
-  auditDataMissing: boolean;
+  auditModeEnabled: boolean = !this.stateService.hideAudit.value;
+  auditAvailable = true;
+  showAudit: boolean;
   isMobile = window.innerWidth <= 767.98;
   hoverTx: string;
   numMissing: number = 0;
@@ -79,6 +80,7 @@ export class BlockComponent implements OnInit, OnDestroy {
   timeLtrSubscription: Subscription;
   timeLtr: boolean;
   childChangeSubscription: Subscription;
+  auditPrefSubscription: Subscription;
 
   @ViewChildren('blockGraphProjected') blockGraphProjected: QueryList<BlockOverviewGraphComponent>;
   @ViewChildren('blockGraphActual') blockGraphActual: QueryList<BlockOverviewGraphComponent>;
@@ -108,7 +110,12 @@ export class BlockComponent implements OnInit, OnDestroy {
     });
 
     this.indexingAvailable = (this.stateService.env.BASE_MODULE === 'mempool' && this.stateService.env.MINING_DASHBOARD === true);
-    this.auditEnabled = this.indexingAvailable;
+    this.setAuditAvailable(this.indexingAvailable);
+
+    this.auditPrefSubscription = this.stateService.hideAudit.subscribe((hide) => {
+      this.auditModeEnabled = !hide;
+      this.showAudit = this.auditAvailable && this.auditModeEnabled;
+    });
 
     this.txsLoadingStatus$ = this.route.paramMap
       .pipe(
@@ -139,11 +146,10 @@ export class BlockComponent implements OnInit, OnDestroy {
         this.error = undefined;
         this.fees = undefined;
         this.stateService.markBlock$.next({});
-        this.auditDataMissing = false;
 
         if (history.state.data && history.state.data.blockHeight) {
           this.blockHeight = history.state.data.blockHeight;
-          this.updateAuditDataMissingFromBlockHeight(this.blockHeight);
+          this.updateAuditAvailableFromBlockHeight(this.blockHeight);
         }
 
         let isBlockHeight = false;
@@ -156,7 +162,7 @@ export class BlockComponent implements OnInit, OnDestroy {
 
         if (history.state.data && history.state.data.block) {
           this.blockHeight = history.state.data.block.height;
-          this.updateAuditDataMissingFromBlockHeight(this.blockHeight);
+          this.updateAuditAvailableFromBlockHeight(this.blockHeight);
           return of(history.state.data.block);
         } else {
           this.isLoadingBlock = true;
@@ -218,7 +224,7 @@ export class BlockComponent implements OnInit, OnDestroy {
             this.apiService.getBlockAudit$(block.previousblockhash);
           }, 100);
         }
-        this.updateAuditDataMissingFromBlockHeight(block.height);
+        this.updateAuditAvailableFromBlockHeight(block.height);
         this.block = block;
         this.blockHeight = block.height;
         this.lastBlockHeight = this.blockHeight;
@@ -370,10 +376,9 @@ export class BlockComponent implements OnInit, OnDestroy {
             for (const tx of blockAudit.transactions) {
               inBlock[tx.txid] = true;
             }
-            this.auditEnabled = true;
+            this.setAuditAvailable(true);
           } else {
-            this.auditEnabled = false;
-            this.auditDataMissing = true;
+            this.setAuditAvailable(false);
           }
           return blockAudit;
         }),
@@ -382,6 +387,7 @@ export class BlockComponent implements OnInit, OnDestroy {
           this.error = err;
           this.isLoadingOverview = false;
           this.isLoadingAudit = false;
+          this.setAuditAvailable(false);
           return of(null);
         }),
       ).subscribe((blockAudit) => {
@@ -441,6 +447,7 @@ export class BlockComponent implements OnInit, OnDestroy {
     this.networkChangedSubscription.unsubscribe();
     this.queryParamsSubscription.unsubscribe();
     this.timeLtrSubscription.unsubscribe();
+    this.auditSubscription.unsubscribe();
     this.unsubscribeNextBlockSubscriptions();
     this.childChangeSubscription.unsubscribe();
   }
@@ -596,21 +603,30 @@ export class BlockComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateAuditDataMissingFromBlockHeight(blockHeight: number): void {
+  setAuditAvailable(available: boolean): void {
+    this.auditAvailable = available;
+    this.showAudit = this.auditAvailable && this.auditModeEnabled;
+  }
+
+  toggleAuditMode(event): void {
+    this.stateService.hideAudit.next(!event);
+  }
+
+  updateAuditAvailableFromBlockHeight(blockHeight: number): void {
     switch (this.stateService.network) {
       case 'testnet':
         if (blockHeight < this.stateService.env.TESTNET_BLOCK_AUDIT_START_HEIGHT) {
-          this.auditDataMissing = true;
+          this.setAuditAvailable(true);
         }
         break;
       case 'signet':
         if (blockHeight < this.stateService.env.SIGNET_BLOCK_AUDIT_START_HEIGHT) {
-          this.auditDataMissing = true;
+          this.setAuditAvailable(true);
         }
         break;
       default:
         if (blockHeight < this.stateService.env.MAINNET_BLOCK_AUDIT_START_HEIGHT) {
-          this.auditDataMissing = true;
+          this.setAuditAvailable(true);
         }
     }
   }

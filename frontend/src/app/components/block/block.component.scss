@@ -203,3 +203,10 @@ h1 {
     border-color: white;
   }
 }
+
+.audit-toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-right: 1em;
+}
